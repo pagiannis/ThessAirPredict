@@ -16,14 +16,13 @@ const Header = () => {
             { label: "Map", icon: Map },
             { label: "About", icon: Info },
           ].map(({ label, icon: Icon }) => (
-            <a
+            <button
               key={label}
-              href={`#${label.toLowerCase()}`}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
             >
               <Icon className="h-4 w-4" />
               {label}
-            </a>
+            </button>
           ))}
         </nav>
         <div className="flex items-center gap-2">
