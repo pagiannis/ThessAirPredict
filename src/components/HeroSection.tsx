@@ -27,7 +27,7 @@ const HeroSection = ({ title, subtitle, badge }: Props) => {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <p className="text-primary font-display text-sm tracking-[0.2em] uppercase mb-3">
+            <p className="text-primary font-display text-base tracking-[0.2em] uppercase mb-3">
               {badge}
             </p>
             <h1 className=" text-foreground font-display text-4xl md:text-6xl font-bold leading-tight mb-4">

@@ -26,8 +26,8 @@ const Header = () => {
               key={label}
               to={path}
               className={({ isActive }) =>
-                `text-sm font-medium transition-colors hover:text-primary ${
-                  isActive ? "text-primary" : "text-muted-foreground"
+                `text-base font-medium transition-colors hover:text-primary ${
+                  isActive ? "text-primary font-bold" : "text-muted-foreground"
                 }`
               }
             >
@@ -36,7 +36,7 @@ const Header = () => {
           ))}
         </nav>
         <div className="flex items-center gap-2">
-          <span className="hidden sm:inline text-xs text-muted-foreground">
+          <span className="hidden sm:inline font-medium text-base text-muted-foreground">
             Thessaloniki, GR
           </span>
           <div className="h-2 w-2 rounded-full bg-primary animate-pulse-glow" />
