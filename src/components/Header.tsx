@@ -1,4 +1,4 @@
-import { Activity, Info, Map, Wind } from "lucide-react";
+import { Wind } from "lucide-react";
 
 const Header = () => {
   return (
@@ -7,23 +7,20 @@ const Header = () => {
         <div className="flex items-center gap-2">
           <Wind className="h-6 w-6 text-primary" />
           <span className="font-display font-bold text-lg text-foreground">
-            ThessAirPredict
+            ThessAIRPredict
           </span>
         </div>
         <nav className="hidden md:flex items-center gap-8">
-          {[
-            { label: "Dashboard", icon: Activity },
-            { label: "Map", icon: Map },
-            { label: "About", icon: Info },
-          ].map(({ label, icon: Icon }) => (
-            <button
-              key={label}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </button>
-          ))}
+          {[{ label: "Dashboard" }, { label: "Map" }, { label: "About" }].map(
+            ({ label }) => (
+              <button
+                key={label}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                {label}
+              </button>
+            ),
+          )}
         </nav>
         <div className="flex items-center gap-2">
           <span className="hidden sm:inline text-xs text-muted-foreground">
