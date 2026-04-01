@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { ArrowDown } from "lucide-react";
 import heroImage from "@/assets/thessaloniki-hero.jpg";
 
 const HeroSection = () => {
@@ -32,20 +31,6 @@ const HeroSection = () => {
             Real-time air quality monitoring and ML-based forecasting for the
             city of Thessaloniki.
           </p>
-        </motion.div>
-
-        <motion.div
-          className="mt-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 0.6 }}
-        >
-          <a
-            href="#dashboard"
-            className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors"
-          >
-            Explore Data <ArrowDown className="h-4 w-4 animate-bounce" />
-          </a>
         </motion.div>
       </div>
     </section>

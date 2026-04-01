@@ -11,16 +11,14 @@ const Header = () => {
           </span>
         </div>
         <nav className="hidden md:flex items-center gap-8">
-          {[{ label: "Dashboard" }, { label: "Map" }, { label: "About" }].map(
-            ({ label }) => (
-              <button
-                key={label}
-                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
-              >
-                {label}
-              </button>
-            ),
-          )}
+          {[{ label: "Dashboard" }, { label: "Forecast" }].map(({ label }) => (
+            <button
+              key={label}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors"
+            >
+              {label}
+            </button>
+          ))}
         </nav>
         <div className="flex items-center gap-2">
           <span className="hidden sm:inline text-xs text-muted-foreground">
