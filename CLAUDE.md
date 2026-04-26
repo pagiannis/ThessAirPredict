@@ -7,6 +7,7 @@ No test runner is configured.
 ## Architecture
 
 **ThessAirPredict** is a React 19 + TypeScript SPA for air quality monitoring and forecasting in Thessaloniki. Built with Vite, styled with Tailwind CSS 4 and shadcn/ui (radix-nova style).
+It is a project with concept: AI-based air quality forecasting
 
 ### Routing
 
