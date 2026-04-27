@@ -1,3 +1,4 @@
+import asyncio
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -29,6 +30,16 @@ _PM25_BP = [
     (250.5, 500.4, 301, 500),
 ]
 
+PARAM_META: list[tuple[str, str, str]] = [
+    ("pm25", "PM2.5", "µg/m³"),
+    ("pm10", "PM10", "µg/m³"),
+    ("no2", "NO₂", "µg/m³"),
+    ("o3", "O₃", "µg/m³"),
+    ("so2", "SO₂", "µg/m³"),
+    ("co", "CO", "mg/m³"),
+]
+_TRACKED = {key for key, _, _ in PARAM_META}
+
 
 def _pm25_to_aqi(conc: float) -> int:
     for c_lo, c_hi, i_lo, i_hi in _PM25_BP:
@@ -59,74 +70,88 @@ def _avg(vals: list[float]) -> float:
     return sum(vals) / len(vals) if vals else 0.0
 
 
+def _param_name(param: Any) -> str:
+    if isinstance(param, dict):
+        return param.get("name", "").lower()
+    return str(param).lower()
+
+
+async def _fetch_sensor(
+    client: httpx.AsyncClient, sensor_id: int
+) -> tuple[int, float | None]:
+    resp = await client.get(
+        f"{OPENAQ_BASE}/sensors/{sensor_id}/measurements",
+        params={"limit": 1},
+    )
+    if resp.status_code != 200:
+        return sensor_id, None
+    results = resp.json().get("results", [])
+    if not results:
+        return sensor_id, None
+    value = results[0].get("value")
+    return sensor_id, float(value) if (value is not None and float(value) >= 0) else None
+
+
 async def _fetch() -> dict:
-    headers = {"X-API-Key": settings.openaq_api_key} if settings.openaq_api_key else {}
+    headers = {"X-API-Key": settings.openaq_api_key}
 
     async with httpx.AsyncClient(headers=headers, timeout=15.0) as client:
+        # Step 1: find nearby stations; response includes embedded sensor list
         loc_resp = await client.get(
             f"{OPENAQ_BASE}/locations",
             params={
                 "coordinates": f"{THESS_LAT},{THESS_LON}",
                 "radius": SEARCH_RADIUS_M,
                 "limit": 10,
-                "order_by": "distance",
             },
         )
         loc_resp.raise_for_status()
         locations = loc_resp.json().get("results", [])
 
-    if not locations:
-        raise ValueError("No monitoring stations found near Thessaloniki")
+        if not locations:
+            raise ValueError("No monitoring stations found near Thessaloniki")
 
-    # Collect measurements; key = lowercase parameter name, value = list of readings
-    param_values: dict[str, list[float]] = {}
-    station_readings: list[StationReading] = []
+        # Build lookups from the location response
+        loc_meta: dict[int, dict] = {}
+        sensor_to_loc: dict[int, tuple[int, str]] = {}  # sensor_id → (loc_id, param_name)
 
-    async with httpx.AsyncClient(headers=headers, timeout=15.0) as client:
         for loc in locations[:6]:
-            loc_id = loc["id"]
-            loc_name = loc.get("name", f"Station {loc_id}")
             coords = loc.get("coordinates", {})
-            lat = coords.get("latitude", THESS_LAT)
-            lon = coords.get("longitude", THESS_LON)
+            loc_id = loc["id"]
+            loc_meta[loc_id] = {
+                "name": loc.get("name", f"Station {loc_id}"),
+                "lat": coords.get("latitude", THESS_LAT),
+                "lon": coords.get("longitude", THESS_LON),
+            }
+            for sensor in loc.get("sensors", []):
+                name = _param_name(sensor.get("parameter", {}))
+                if name in _TRACKED:
+                    sensor_to_loc[sensor["id"]] = (loc_id, name)
 
-            latest_resp = await client.get(f"{OPENAQ_BASE}/locations/{loc_id}/latest")
-            if latest_resp.status_code != 200:
-                continue
+        # Step 2: fetch latest measurement for every relevant sensor concurrently
+        sensor_results = await asyncio.gather(
+            *[_fetch_sensor(client, sid) for sid in sensor_to_loc]
+        )
 
-            measurements = latest_resp.json().get("results", [])
-            pm25_val: float | None = None
+    # Aggregate
+    param_values: dict[str, list[float]] = {}
+    pm25_by_loc: dict[int, float] = {}
 
-            for m in measurements:
-                param = m.get("parameter", {})
-                name = param.get("name", "").lower()
-                value = m.get("value")
-                if value is None or value < 0:
-                    continue
-                param_values.setdefault(name, []).append(float(value))
-                if name == "pm25":
-                    pm25_val = float(value)
+    for sensor_id, value in sensor_results:
+        if value is None:
+            continue
+        loc_id, param_name = sensor_to_loc[sensor_id]
+        param_values.setdefault(param_name, []).append(value)
+        if param_name == "pm25":
+            pm25_by_loc[loc_id] = value
 
-            if pm25_val is not None:
-                x, y = _to_xy(lat, lon)
-                station_readings.append(
-                    StationReading(
-                        name=loc_name,
-                        x=x,
-                        y=y,
-                        aqi=_pm25_to_aqi(pm25_val),
-                    )
-                )
-
-    # Build pollutant list — only include parameters with actual data
-    PARAM_META: list[tuple[str, str, str]] = [
-        ("pm25", "PM2.5", "µg/m³"),
-        ("pm10", "PM10", "µg/m³"),
-        ("no2", "NO₂", "µg/m³"),
-        ("o3", "O₃", "µg/m³"),
-        ("so2", "SO₂", "µg/m³"),
-        ("co", "CO", "mg/m³"),
-    ]
+    station_readings: list[StationReading] = []
+    for loc_id, pm25_val in pm25_by_loc.items():
+        meta = loc_meta[loc_id]
+        x, y = _to_xy(meta["lat"], meta["lon"])
+        station_readings.append(
+            StationReading(name=meta["name"], x=x, y=y, aqi=_pm25_to_aqi(pm25_val))
+        )
 
     pollutants: list[PollutantReading] = []
     for key, display, unit in PARAM_META:
@@ -138,12 +163,12 @@ async def _fetch() -> dict:
                 name=display,
                 value=round(_avg(vals), 2),
                 unit=unit,
-                trend="stable",  # trend requires historical data — extended later
+                trend="stable",
             )
         )
 
-    pm25_avg = _avg(param_values.get("pm25", []))
-    overall_aqi = _pm25_to_aqi(pm25_avg) if pm25_avg else 0
+    pm25_readings = param_values.get("pm25", [])
+    overall_aqi = _pm25_to_aqi(_avg(pm25_readings)) if pm25_readings else 0
 
     return {
         "aqi": overall_aqi,
