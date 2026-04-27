@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import type { AqiLabel } from "@/lib/api";
+import type { AqiLabel } from "@/types/api";
 
 const AQI_COLOR: Record<AqiLabel, string> = {
   Good: "text-aqi-good border-aqi-good",

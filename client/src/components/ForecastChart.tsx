@@ -7,7 +7,7 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import type { ForecastPoint } from "@/lib/api";
+import type { ForecastPoint } from "@/types/api";
 
 interface Props {
   data: ForecastPoint[];

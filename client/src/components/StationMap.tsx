@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { MapPin } from "lucide-react";
-import type { StationReading } from "@/lib/api";
+import type { StationReading } from "@/types/api";
 
 const getAqiColor = (aqi: number) => {
   if (aqi <= 50) return "text-aqi-good";
