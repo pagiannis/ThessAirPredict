@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface Props {
@@ -10,6 +11,12 @@ interface Props {
   index: number;
 }
 
+const TREND_CONFIG = {
+  up:     { Icon: TrendingUp,   label: "Rising",  cls: "bg-red-500/15 text-red-400 border-red-500/20" },
+  down:   { Icon: TrendingDown, label: "Falling", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" },
+  stable: { Icon: Minus,        label: "Stable",  cls: "bg-muted/40 text-muted-foreground border-border/50" },
+} as const;
+
 const PollutantCard = ({
   name,
   value,
@@ -18,6 +25,8 @@ const PollutantCard = ({
   trend,
   index,
 }: Props) => {
+  const { Icon: TrendIcon, label, cls } = TREND_CONFIG[trend];
+
   return (
     <motion.div
       className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl p-5 hover:border-primary/30 transition-colors group"
@@ -28,7 +37,10 @@ const PollutantCard = ({
     >
       <div className="flex items-start justify-between mb-3">
         <Icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-        <span className={`text-xs font-medium ${[trend]}`}>{trend}</span>
+        <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border ${cls}`}>
+          <TrendIcon className="h-3 w-3" />
+          {label}
+        </span>
       </div>
       <p className="font-display text-2xl font-bold text-foreground">
         {value}
