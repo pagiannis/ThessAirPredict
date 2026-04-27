@@ -1,8 +1,26 @@
 import { motion } from "framer-motion";
+import type { AqiLabel } from "@/lib/api";
 
-const AqiOverview = () => {
-  const aqiValue = 72;
-  const aqiLabel = "Moderate";
+const AQI_COLOR: Record<AqiLabel, string> = {
+  Good: "text-aqi-good border-aqi-good",
+  Moderate: "text-aqi-moderate border-aqi-moderate",
+  Unhealthy: "text-aqi-unhealthy border-aqi-unhealthy",
+  "Very Unhealthy": "text-aqi-unhealthy border-aqi-unhealthy",
+  Hazardous: "text-aqi-unhealthy border-aqi-unhealthy",
+};
+
+interface Props {
+  aqi: number;
+  label: AqiLabel;
+  updatedAt: string;
+}
+
+const AqiOverview = ({ aqi, label, updatedAt }: Props) => {
+  const colorClass = AQI_COLOR[label];
+  const time = new Date(updatedAt).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
     <motion.div
@@ -16,16 +34,18 @@ const AqiOverview = () => {
         Current AQI
       </p>
       <div className="relative mb-4">
-        <div className="h-32 w-32 rounded-full border-4 border-aqi-moderate flex items-center justify-center">
-          <span className="font-display text-5xl font-bold text-aqi-moderate">
-            {aqiValue}
+        <div
+          className={`h-32 w-32 rounded-full border-4 flex items-center justify-center ${colorClass}`}
+        >
+          <span className={`font-display text-5xl font-bold ${colorClass}`}>
+            {aqi}
           </span>
         </div>
       </div>
-      <p className="font-display text-lg font-semibold text-aqi-moderate">
-        {aqiLabel}
+      <p className={`font-display text-lg font-semibold ${colorClass}`}>
+        {label}
       </p>
-      <p className="text-muted-foreground text-xs mt-2">Updated 5 min ago</p>
+      <p className="text-muted-foreground text-xs mt-2">Updated at {time}</p>
     </motion.div>
   );
 };

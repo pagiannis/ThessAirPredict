@@ -1,13 +1,6 @@
 import { motion } from "framer-motion";
 import { MapPin } from "lucide-react";
-
-const stations = [
-  { name: "Kordelio", x: 25, y: 40, aqi: 85 },
-  { name: "Sindos", x: 15, y: 30, aqi: 92 },
-  { name: "Agia Sofia", x: 55, y: 55, aqi: 62 },
-  { name: "Panorama", x: 75, y: 35, aqi: 45 },
-  { name: "Kalamaria", x: 65, y: 70, aqi: 58 },
-];
+import type { StationReading } from "@/lib/api";
 
 const getAqiColor = (aqi: number) => {
   if (aqi <= 50) return "text-aqi-good";
@@ -15,7 +8,11 @@ const getAqiColor = (aqi: number) => {
   return "text-aqi-unhealthy";
 };
 
-const StationMap = () => {
+interface Props {
+  stations: StationReading[];
+}
+
+const StationMap = ({ stations }: Props) => {
   return (
     <motion.div
       className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl p-6"
@@ -32,7 +29,6 @@ const StationMap = () => {
       </p>
 
       <div className="relative bg-secondary/50 rounded-lg h-64 overflow-hidden">
-        {/* Stylized map grid */}
         <div className="absolute inset-0 opacity-10">
           {Array.from({ length: 8 }).map((_, i) => (
             <div

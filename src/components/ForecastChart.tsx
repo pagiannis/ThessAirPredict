@@ -7,18 +7,13 @@ import {
   Area,
   AreaChart,
 } from "recharts";
+import type { ForecastPoint } from "@/lib/api";
 
-const forecastData = [
-  { time: "Now", aqi: 72 },
-  { time: "+3h", aqi: 68 },
-  { time: "+6h", aqi: 65 },
-  { time: "+12h", aqi: 58 },
-  { time: "+24h", aqi: 52 },
-  { time: "+36h", aqi: 61 },
-  { time: "+48h", aqi: 70 },
-];
+interface Props {
+  data: ForecastPoint[];
+}
 
-const ForecastChart = () => {
+const ForecastChart = ({ data }: Props) => {
   return (
     <motion.div
       className="glass-card p-6"
@@ -42,7 +37,7 @@ const ForecastChart = () => {
       </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={forecastData}>
+          <AreaChart data={data}>
             <defs>
               <linearGradient id="aqiGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop
