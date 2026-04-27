@@ -4,43 +4,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 No test runner is configured.
 
-## Architecture
+## Project Overview
+AI-based air quality forecasting for Thessaloniki.
+- **Frontend:** React 19, TypeScript, Vite, Tailwind 4, shadcn/ui.
+- **Backend:** FastAPI (Python 3.11+), OpenAQ v3 API.
 
-**ThessAirPredict** is a React 19 + TypeScript SPA for air quality monitoring and forecasting in Thessaloniki. Built with Vite, styled with Tailwind CSS 4 and shadcn/ui (radix-nova style).
-It is a project with concept: AI-based air quality forecasting
+## Strategic Guidelines
+- **Modern React:** Use Functional Components with Hooks. Prefer `const Component = () => ...`.
+- **Typing:** Strict TypeScript. Prefer `interface` for API responses and component props.
+- **Styling:** Use Tailwind 4 utility classes. Use the `cn()` utility for all conditional classes.
+- **State/Data:** Use `src/lib/api.ts` for all fetch logic. Use React Query and axios for data fetching from the backned.
 
-### Routing
+## Architecture & Routing
+- **Routes:** Defined in `src/routes.tsx`. Layout-based structure.
+- **Hero Section:** The `HeroSection` content is determined by the `useLocation()` hook within the component.
 
-Two pages under a shared `Layout`:
+## Component Hierarchy
+- `src/components/ui/`: Low-level shadcn primitives.
+- `src/components/`: Other components.
+- `src/pages/`: Layout, Home Page, Forecast Page.
 
-```
-/ (Layout.tsx)
-  ├── Dashboard (index)   — live AQI overview
-  └── /forecast           — 48-hour forecast chart
-```
+## Backend (FastAPI)
+- **Caching:** 5-minute in-memory cache in `openaq.py`.
+- **Forecast Logic:** `forecaster.py` uses a sinusoidal model (peaks at 08:00 and 18:00).
+- **Validation:** Pydantic models in `server/models/schemas.py` must sync with `client/src/types/api.ts`.
 
-`App.tsx` → `RouterProvider` → `routes.tsx` defines the route tree.
-`Layout.tsx` wraps pages with `Header` + `HeroSection` (dynamic per route) + `<Outlet>`.
+## Development Workflow
+### Setup
+1. Client: `cd client && npm install`
+2. Server: `cd server && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
 
-### Component hierarchy
+### Common Commands
+- `npm run dev`: Start Vite dev server.
+- `python server/main.py`: Start FastAPI (or use uvicorn).
+- `npx shadcn@latest add [component]`: Add new UI primitives.
 
-- **Dashboard.tsx** — assembles the main page: `AqiOverview` (left column, 2-row span), six `PollutantCard`s (PM2.5, PM10, NO₂, O₃, CO, SO₂) in a 3-col grid, then `StationMap`.
-- **Forecast.tsx** — renders `ForecastChart` (Recharts area chart, 48-hour AQI).
-- **HeroSection.tsx** — background image + gradient overlay, content varies by active route.
-- All data is currently static/mock — no API integration yet.
-
-### Styling conventions
-
-- Tailwind CSS 4 via `@tailwindcss/vite` plugin (no `tailwind.config.js` — config lives inside CSS).
-- Design tokens are CSS custom properties declared in `src/index.css`: colors (background, foreground, primary `#17a697`, AQI bands good/moderate/unhealthy), font families (Space Grotesk display, Inter body).
-- Use `cn()` from `src/lib/utils.ts` (clsx + tailwind-merge) for conditional class composition.
-- shadcn components live in `src/components/ui/`; use Class Variance Authority for variant props.
-- Framer Motion is available for animations.
-
-### Path alias
-
-`@/` resolves to `./src/` — use it for all internal imports.
-
-### Adding shadcn components
-
-Components are configured via `components.json` (style: radix-nova, base color: neutral). Add new primitives with the shadcn CLI and place them in `src/components/ui/`.
+## Path Aliases
+- `@/*` -> `./src/*`
