@@ -14,8 +14,8 @@ class PollutantReading(BaseModel):
 
 class StationReading(BaseModel):
     name: str
-    x: float
-    y: float
+    lat: float
+    lon: float
     aqi: int
 
 

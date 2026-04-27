@@ -14,11 +14,12 @@ THESS_LON = 22.9444
 SEARCH_RADIUS_M = 25_000
 CACHE_TTL = 300  # seconds
 
-# Rough bounding box for Thessaloniki, used to map lat/lon → 0–100 x/y
-_LON_MIN, _LON_MAX = 22.85, 23.05
-_LAT_MIN, _LAT_MAX = 40.55, 40.75
-
 _cache: dict[str, tuple[Any, float]] = {}
+
+# Human-readable overrides for EEA station codes returned by OpenAQ
+_STATION_NAMES: dict[str, str] = {
+    "GR0018A": "Thessaloniki",
+}
 
 # PM2.5 AQI breakpoints (US EPA)
 _PM25_BP = [
@@ -60,12 +61,6 @@ def _aqi_label(aqi: int) -> str:
     return "Hazardous"
 
 
-def _to_xy(lat: float, lon: float) -> tuple[float, float]:
-    x = (lon - _LON_MIN) / (_LON_MAX - _LON_MIN) * 100
-    y = (_LAT_MAX - lat) / (_LAT_MAX - _LAT_MIN) * 100
-    return round(max(0, min(100, x)), 1), round(max(0, min(100, y)), 1)
-
-
 def _avg(vals: list[float]) -> float:
     return sum(vals) / len(vals) if vals else 0.0
 
@@ -74,6 +69,10 @@ def _param_name(param: Any) -> str:
     if isinstance(param, dict):
         return param.get("name", "").lower()
     return str(param).lower()
+
+
+def _station_display_name(raw: str) -> str:
+    return _STATION_NAMES.get(raw.upper(), raw.title())
 
 
 async def _fetch_sensor(
@@ -119,7 +118,7 @@ async def _fetch() -> dict:
             coords = loc.get("coordinates", {})
             loc_id = loc["id"]
             loc_meta[loc_id] = {
-                "name": loc.get("name", f"Station {loc_id}"),
+                "name": _station_display_name(loc.get("name", f"Station {loc_id}")),
                 "lat": coords.get("latitude", THESS_LAT),
                 "lon": coords.get("longitude", THESS_LON),
             }
@@ -148,9 +147,13 @@ async def _fetch() -> dict:
     station_readings: list[StationReading] = []
     for loc_id, pm25_val in pm25_by_loc.items():
         meta = loc_meta[loc_id]
-        x, y = _to_xy(meta["lat"], meta["lon"])
         station_readings.append(
-            StationReading(name=meta["name"], x=x, y=y, aqi=_pm25_to_aqi(pm25_val))
+            StationReading(
+                name=meta["name"],
+                lat=meta["lat"],
+                lon=meta["lon"],
+                aqi=_pm25_to_aqi(pm25_val),
+            )
         )
 
     pollutants: list[PollutantReading] = []

@@ -16,8 +16,8 @@ export interface PollutantReading {
 
 export interface StationReading {
   name: string;
-  x: number;
-  y: number;
+  lat: number;
+  lon: number;
   aqi: number;
 }
 
