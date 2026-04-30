@@ -4,7 +4,16 @@ Data cleaning and feature engineering for the AQI forecast model.
 Inputs:  ml/data/thessaloniki_pollutants_YYYY_MM.csv  (no2, o3, co, so2 — hourly)
          ml/data/weather_data_2023_2024.csv           (temperature, humidity, wind — hourly)
 
-Output:  X (features DataFrame), y (AQI Series) ready for train_model.py
+Output:  X, y, base_times  via build_features_multistep()
+
+Training design (multi-step forecasting):
+  For each (timestamp t, horizon h in [3, 6, ..., 48]):
+    Features : current pollutant/weather readings at t  +  time-of-day at t+h  +  h
+    Target   : AQI at t+h
+
+  This matches inference: given current OpenAQ readings, predict AQI h hours ahead.
+  Using FUTURE AQI as the target (not current) prevents data leakage where the model
+  would otherwise just learn to invert the AQI formula.
 
 AQI is computed as the max sub-index across NO2, O3, and SO2 using EPA piecewise
 breakpoints (converted from ppb to µg/m³). PM2.5 is not available in this dataset.
@@ -41,11 +50,14 @@ _SO2_BP = [  # 1 ppb SO2 ≈ 2.62 µg/m³
     (797.0, 1583.0, 201, 300),
 ]
 
-FEATURE_COLS = [
-    "hour", "day_of_week", "month",
+HORIZONS = list(range(3, 49, 3))  # [3, 6, 9, ..., 48]
+
+_POLLUTANT_WEATHER_COLS = [
     "no2_conc", "o3_conc", "co_conc", "so2_conc",
     "temperature", "humidity", "precipitation", "wind_speed",
 ]
+
+FEATURE_COLS = ["hour", "day_of_week", "month", "hours_ahead"] + _POLLUTANT_WEATHER_COLS
 
 
 def _piecewise_aqi(conc: float, breakpoints: list) -> int:
@@ -104,16 +116,47 @@ def load_and_merge() -> pd.DataFrame:
     return df
 
 
-def build_features(df: pd.DataFrame):
-    X = df[FEATURE_COLS].dropna()
-    y = df.loc[X.index, "aqi"]
-    return X, y
+def build_features_multistep(df: pd.DataFrame):
+    """
+    Returns (X, y, base_times) where each row is one (timestamp, horizon) training pair.
+
+    base_times is the original timestamp for each row — used for temporal train/test
+    splitting in train_model.py (train on 2023 base times, test on 2024).
+    """
+    indexed = df.set_index("time")
+    all_X, all_y, all_t = [], [], []
+
+    for h in HORIZONS:
+        base = indexed[_POLLUTANT_WEATHER_COLS].copy()
+
+        # Shift future AQI index back by h hours so it aligns with the base timestamp
+        future_aqi = indexed["aqi"].copy()
+        future_aqi.index = future_aqi.index - pd.Timedelta(hours=h)
+
+        chunk = base.join(future_aqi.rename("future_aqi"), how="inner").dropna()
+
+        future_time = chunk.index + pd.Timedelta(hours=h)
+        chunk = chunk.copy()
+        chunk["hour"]        = future_time.hour
+        chunk["day_of_week"] = future_time.dayofweek
+        chunk["month"]       = future_time.month
+        chunk["hours_ahead"] = h
+
+        all_X.append(chunk[FEATURE_COLS])
+        all_y.append(chunk["future_aqi"])
+        all_t.append(pd.Series(chunk.index, name="base_time"))
+
+    X          = pd.concat(all_X).reset_index(drop=True)
+    y          = pd.concat(all_y).reset_index(drop=True)
+    base_times = pd.concat(all_t).reset_index(drop=True)
+    return X, y, base_times
 
 
 if __name__ == "__main__":
     df = load_and_merge()
-    X, y = build_features(df)
-    print(f"Dataset:  {len(df):,} rows  ({df['time'].min()} → {df['time'].max()})")
-    print(f"Features: {X.shape[1]} columns — {list(X.columns)}")
-    print(f"AQI:      min={y.min()}  max={y.max()}  mean={y.mean():.1f}  std={y.std():.1f}")
-    print(f"\nMissing values per column:\n{df[FEATURE_COLS + ['aqi']].isnull().sum()}")
+    X, y, base_times = build_features_multistep(df)
+    print(f"Base dataset : {len(df):,} hourly rows  ({df['time'].min()} → {df['time'].max()})")
+    print(f"Training rows: {len(X):,}  ({len(HORIZONS)} horizons × base rows)")
+    print(f"Features     : {X.shape[1]} — {list(X.columns)}")
+    print(f"AQI target   : min={y.min():.0f}  max={y.max():.0f}  mean={y.mean():.1f}  std={y.std():.1f}")
+    print(f"\nMissing values:\n{X.isnull().sum().to_string()}")

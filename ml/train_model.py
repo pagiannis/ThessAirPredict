@@ -1,37 +1,68 @@
 """
-Train an AQI forecast model and export model.pkl.
+Train an AQI forecast model and save model.pkl.
+
+Run from the ml/ directory (with .venv active):
+    python train_model.py
 
 After training, copy model.pkl to server/model/model.pkl.
-Run: python train_model.py
 """
 
 import pickle
 from pathlib import Path
 
-from preprocessing import load_raw, build_features
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import mean_absolute_error, r2_score
+
+from preprocessing import load_and_merge, build_features_multistep
 
 MODEL_OUT = Path("model.pkl")
 
 
+def print_feature_importances(model, feature_names):
+    pairs = sorted(zip(feature_names, model.feature_importances_), key=lambda x: x[1], reverse=True)
+    print("\nFeature importances:")
+    for name, imp in pairs:
+        bar = "█" * int(imp * 50)
+        print(f"  {name:<22} {bar} {imp:.3f}")
+
+
 def train():
-    df = load_raw()
-    X, y = build_features(df)
+    print("Loading and merging data...")
+    df = load_and_merge()
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    print("Building multi-step training set...")
+    X, y, base_times = build_features_multistep(df)
+    print(f"  {len(X):,} training pairs  |  {X.shape[1]} features")
 
-    model = RandomForestRegressor(n_estimators=200, random_state=42, n_jobs=-1)
+    print("\nSplitting: train=2023 base times, test=2024 base times...")
+    train_mask = base_times.dt.year < 2024
+    test_mask  = base_times.dt.year >= 2024
+    X_train, X_test = X[train_mask], X[test_mask]
+    y_train, y_test = y[train_mask], y[test_mask]
+    print(f"  Train: {len(X_train):,} rows  |  Test: {len(X_test):,} rows")
+
+    print("\nTraining RandomForest...")
+    model = RandomForestRegressor(
+        n_estimators=300,
+        min_samples_leaf=3,
+        random_state=42,
+        n_jobs=-1,
+    )
     model.fit(X_train, y_train)
 
-    mae = mean_absolute_error(y_test, model.predict(X_test))
-    print(f"Test MAE: {mae:.2f} AQI points")
+    y_pred = model.predict(X_test)
+    mae = mean_absolute_error(y_test, y_pred)
+    r2  = r2_score(y_test, y_pred)
+    print(f"\n  MAE : {mae:.2f} AQI points")
+    print(f"  R²  : {r2:.3f}")
+
+    print_feature_importances(model, X.columns)
 
     with open(MODEL_OUT, "wb") as f:
         pickle.dump(model, f)
-    print(f"Model saved → {MODEL_OUT}")
-    print("Next: copy model.pkl to server/model/model.pkl")
+
+    print(f"\nModel saved → {MODEL_OUT}")
+    print("Next step: copy model.pkl to ../server/model/model.pkl")
 
 
 if __name__ == "__main__":
