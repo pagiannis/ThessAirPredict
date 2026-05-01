@@ -13,7 +13,29 @@ interface Props {
   data: ForecastPoint[];
 }
 
+function formatForecastTime(time: string): string {
+  if (time === "Now") return "Now";
+  const match = time.match(/^\+(\d+)h$/);
+  if (!match) return time;
+  const hours = parseInt(match[1]);
+  const base = new Date();
+  base.setMinutes(0, 0, 0);
+  const target = new Date(base.getTime() + hours * 3_600_000);
+  const timeStr = target.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    hour12: true,
+  });
+  if (target.getDate() === base.getDate()) return timeStr;
+  const day = target.toLocaleDateString("en-US", { weekday: "short" });
+  return `${day} ${timeStr}`;
+}
+
 const ForecastChart = ({ data }: Props) => {
+  const chartData = data.map((p) => ({
+    ...p,
+    label: formatForecastTime(p.time),
+  }));
+
   return (
     <motion.div
       className="glass-card p-6"
@@ -31,13 +53,10 @@ const ForecastChart = ({ data }: Props) => {
             ML-based prediction model
           </p>
         </div>
-        <span className="text-xs text-primary bg-primary/10 px-3 py-1 rounded-full">
-          LSTM Model
-        </span>
       </div>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
+          <AreaChart data={chartData}>
             <defs>
               <linearGradient id="aqiGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop
@@ -53,10 +72,11 @@ const ForecastChart = ({ data }: Props) => {
               </linearGradient>
             </defs>
             <XAxis
-              dataKey="time"
+              dataKey="label"
               axisLine={false}
               tickLine={false}
               tick={{ fill: "hsl(215, 12%, 50%)", fontSize: 12 }}
+              interval={3}
             />
             <YAxis
               axisLine={false}
