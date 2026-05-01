@@ -218,10 +218,25 @@ async def _fetch() -> dict:
 
 async def fetch_air_quality() -> dict:
     key = "air_quality"
+    prev: dict | None = None
     if key in _cache:
         value, ts = _cache[key]
         if time.monotonic() - ts < CACHE_TTL:
             return value
+        prev = value  # expired — keep for trend comparison
+
     result = await _fetch()
+
+    if prev:
+        prev_vals = {p.name: p.value for p in prev["pollutants"]}
+        for p in result["pollutants"]:
+            old = prev_vals.get(p.name)
+            if old and old > 0:
+                delta = (p.value - old) / old
+                if delta > 0.05:
+                    p.trend = "up"
+                elif delta < -0.05:
+                    p.trend = "down"
+
     _cache[key] = (result, time.monotonic())
     return result
