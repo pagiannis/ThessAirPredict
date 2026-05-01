@@ -19,16 +19,31 @@ _cache: dict[str, tuple[Any, float]] = {}
 # Human-readable overrides for EEA station codes returned by OpenAQ
 _STATION_NAMES: dict[str, str] = {
     "GR0018A": "Thessaloniki",
+    "GR0020A": "Kordelio",
+    "GR0046A": "Sindos",
 }
 
-# PM2.5 AQI breakpoints (US EPA)
-_PM25_BP = [
-    (0.0, 12.0, 0, 50),
-    (12.1, 35.4, 51, 100),
-    (35.5, 55.4, 101, 150),
-    (55.5, 150.4, 151, 200),
-    (150.5, 250.4, 201, 300),
-    (250.5, 500.4, 301, 500),
+# EPA AQI breakpoints (µg/m³, converted from ppb at 25°C) — must match ml/preprocessing.py
+_NO2_BP = [
+    (0.0,    100.0,   0,  50),
+    (100.0,  188.0,  51, 100),
+    (188.0,  677.0, 101, 150),
+    (677.0, 1221.0, 151, 200),
+    (1221.0, 2350.0, 201, 300),
+]
+_O3_BP = [
+    (0.0,   118.0,   0,  50),
+    (118.0, 157.0,  51, 100),
+    (157.0, 196.0, 101, 150),
+    (196.0, 392.0, 151, 200),
+    (392.0, 784.0, 201, 300),
+]
+_SO2_BP = [
+    (0.0,    92.0,   0,  50),
+    (92.0,  197.0,  51, 100),
+    (197.0, 485.0, 101, 150),
+    (485.0, 797.0, 151, 200),
+    (797.0, 1583.0, 201, 300),
 ]
 
 PARAM_META: list[tuple[str, str, str]] = [
@@ -42,11 +57,11 @@ PARAM_META: list[tuple[str, str, str]] = [
 _TRACKED = {key for key, _, _ in PARAM_META}
 
 
-def _pm25_to_aqi(conc: float) -> int:
-    for c_lo, c_hi, i_lo, i_hi in _PM25_BP:
+def _piecewise_aqi(conc: float, breakpoints: list) -> int:
+    for c_lo, c_hi, i_lo, i_hi in breakpoints:
         if c_lo <= conc <= c_hi:
             return round((i_hi - i_lo) / (c_hi - c_lo) * (conc - c_lo) + i_lo)
-    return 500
+    return 300
 
 
 def _aqi_label(aqi: int) -> str:
@@ -77,18 +92,24 @@ def _station_display_name(raw: str) -> str:
 
 async def _fetch_sensor(
     client: httpx.AsyncClient, sensor_id: int
-) -> tuple[int, float | None]:
+) -> tuple[int, float | None, str | None]:
     resp = await client.get(
         f"{OPENAQ_BASE}/sensors/{sensor_id}/measurements",
         params={"limit": 1},
     )
     if resp.status_code != 200:
-        return sensor_id, None
+        return sensor_id, None, None
     results = resp.json().get("results", [])
     if not results:
-        return sensor_id, None
-    value = results[0].get("value")
-    return sensor_id, float(value) if (value is not None and float(value) >= 0) else None
+        return sensor_id, None, None
+    r = results[0]
+    value = r.get("value")
+    ts = r.get("period", {}).get("datetimeLast", {}).get("utc")
+    return (
+        sensor_id,
+        float(value) if (value is not None and float(value) >= 0) else None,
+        ts,
+    )
 
 
 async def _fetch() -> dict:
@@ -134,25 +155,31 @@ async def _fetch() -> dict:
 
     # Aggregate
     param_values: dict[str, list[float]] = {}
-    pm25_by_loc: dict[int, float] = {}
+    poll_by_loc: dict[int, dict[str, float]] = {}
+    latest_ts: str | None = None
 
-    for sensor_id, value in sensor_results:
+    for sensor_id, value, ts in sensor_results:
+        if ts and (latest_ts is None or ts > latest_ts):
+            latest_ts = ts
         if value is None:
             continue
         loc_id, param_name = sensor_to_loc[sensor_id]
         param_values.setdefault(param_name, []).append(value)
-        if param_name == "pm25":
-            pm25_by_loc[loc_id] = value
+        if param_name in {"no2", "o3", "so2"}:
+            poll_by_loc.setdefault(loc_id, {})[param_name] = value
 
     station_readings: list[StationReading] = []
-    for loc_id, pm25_val in pm25_by_loc.items():
+    for loc_id, readings in poll_by_loc.items():
         meta = loc_meta[loc_id]
+        no2_aqi = _piecewise_aqi(readings.get("no2", 0.0), _NO2_BP)
+        o3_aqi  = _piecewise_aqi(readings.get("o3",  0.0), _O3_BP)
+        so2_aqi = _piecewise_aqi(readings.get("so2", 0.0), _SO2_BP)
         station_readings.append(
             StationReading(
                 name=meta["name"],
                 lat=meta["lat"],
                 lon=meta["lon"],
-                aqi=_pm25_to_aqi(pm25_val),
+                aqi=max(no2_aqi, o3_aqi, so2_aqi),
             )
         )
 
@@ -170,13 +197,15 @@ async def _fetch() -> dict:
             )
         )
 
-    pm25_readings = param_values.get("pm25", [])
-    overall_aqi = _pm25_to_aqi(_avg(pm25_readings)) if pm25_readings else 0
+    no2_aqi     = _piecewise_aqi(_avg(param_values.get("no2", [])), _NO2_BP)
+    o3_aqi      = _piecewise_aqi(_avg(param_values.get("o3",  [])), _O3_BP)
+    so2_aqi     = _piecewise_aqi(_avg(param_values.get("so2", [])), _SO2_BP)
+    overall_aqi = max(no2_aqi, o3_aqi, so2_aqi)
 
     return {
         "aqi": overall_aqi,
         "aqi_label": _aqi_label(overall_aqi),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": latest_ts or datetime.now(timezone.utc).isoformat(),
         "pollutants": pollutants,
         "stations": station_readings,
     }
