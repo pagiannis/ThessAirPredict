@@ -5,8 +5,8 @@ const AQI_COLOR: Record<AqiLabel, string> = {
   Good: "text-aqi-good border-aqi-good",
   Moderate: "text-aqi-moderate border-aqi-moderate",
   Unhealthy: "text-aqi-unhealthy border-aqi-unhealthy",
-  "Very Unhealthy": "text-aqi-unhealthy border-aqi-unhealthy",
-  Hazardous: "text-aqi-unhealthy border-aqi-unhealthy",
+  "Very Unhealthy": "text-aqi-very-unhealthy border-aqi-very-unhealthy",
+  Hazardous: "text-aqi-hazardous border-aqi-hazardous",
 };
 
 interface Props {

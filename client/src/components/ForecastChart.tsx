@@ -36,9 +36,13 @@ const ForecastChart = ({ data }: Props) => {
     label: formatForecastTime(p.time),
   }));
 
+  const aqiValues = chartData.map((d) => d.aqi);
+  const domainMin = Math.max(0, Math.min(...aqiValues) - 10);
+  const domainMax = Math.min(500, Math.max(...aqiValues) + 10);
+
   return (
     <motion.div
-      className="glass-card p-6"
+      className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl p-6"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
@@ -82,7 +86,7 @@ const ForecastChart = ({ data }: Props) => {
               axisLine={false}
               tickLine={false}
               tick={{ fill: "hsl(215, 12%, 50%)", fontSize: 12 }}
-              domain={[40, 90]}
+              domain={[domainMin, domainMax]}
             />
             <Tooltip
               contentStyle={{
