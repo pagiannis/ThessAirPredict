@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { LatLngBounds } from "leaflet";
 import { MapContainer, TileLayer, CircleMarker, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import type { StationReading } from "@/types/api";
@@ -14,11 +15,26 @@ const getAqiColor = (aqi: number): string => {
   return "hsl(var(--aqi-hazardous))";
 };
 
+function getStationBounds(stations: StationReading[]): LatLngBounds | null {
+  if (stations.length === 0) return null;
+  const lats = stations.map((s) => s.lat);
+  const lons = stations.map((s) => s.lon);
+  return new LatLngBounds(
+    [Math.min(...lats), Math.min(...lons)],
+    [Math.max(...lats), Math.max(...lons)],
+  );
+}
+
 interface Props {
   stations: StationReading[];
 }
 
 const StationMap = ({ stations }: Props) => {
+  const bounds = getStationBounds(stations);
+  const mapProps = bounds
+    ? { bounds, boundsOptions: { padding: [48, 48] as [number, number] } }
+    : { center: THESS_CENTER, zoom: 11 };
+
   return (
     <motion.div
       className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl p-6"
@@ -34,10 +50,9 @@ const StationMap = ({ stations }: Props) => {
         Live AQI readings across Thessaloniki
       </p>
 
-      <div className="rounded-lg overflow-hidden h-64">
+      <div className="rounded-lg overflow-hidden h-72 sm:h-64">
         <MapContainer
-          center={THESS_CENTER}
-          zoom={11}
+          {...mapProps}
           style={{ height: "100%", width: "100%" }}
           scrollWheelZoom={false}
           zoomControl={false}
