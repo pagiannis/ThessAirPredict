@@ -5,12 +5,10 @@ from typing import Any
 
 import httpx
 
-from config import settings
+from config import settings, THESS_LAT, THESS_LON
 from models.schemas import PollutantReading, StationReading
 
 OPENAQ_BASE = "https://api.openaq.org/v3"
-THESS_LAT = 40.6401
-THESS_LON = 22.9444
 SEARCH_RADIUS_M = 25_000 # how far to look for stations around Thessaloniki (in meters)
 CACHE_TTL = 300  # seconds
 

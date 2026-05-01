@@ -18,13 +18,11 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+from config import THESS_LAT, THESS_LON
 from models.schemas import ForecastPoint
 
 _MODEL_PATH = Path(__file__).parent.parent / "model" / "model.pkl"
 _model = None
-
-THESS_LAT = 40.6401
-THESS_LON = 22.9444
 
 _WEATHER_DEFAULTS = {
     "temperature": 15.0,

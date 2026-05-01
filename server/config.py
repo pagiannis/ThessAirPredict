@@ -1,5 +1,8 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+THESS_LAT = 40.6401
+THESS_LON = 22.9444
+
 
 class Settings(BaseSettings):
     openaq_api_key: str
