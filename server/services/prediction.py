@@ -8,12 +8,15 @@ Feature order must match ml/preprocessing.py FEATURE_COLS exactly:
    temperature, humidity, precipitation, wind_speed]
 """
 
+import logging
 import pickle
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import httpx
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 from models.schemas import ForecastPoint
 
@@ -85,7 +88,8 @@ async def generate_forecast(
 
     try:
         weather = await _fetch_current_weather()
-    except Exception:
+    except Exception as exc:
+        logger.warning("Weather API unavailable (%s); using defaults %s", exc, _WEATHER_DEFAULTS)
         weather = _WEATHER_DEFAULTS
 
     now    = datetime.now()
