@@ -23,6 +23,9 @@ _STATION_NAMES: dict[str, str] = {
     "GR0046A": "Sindos",
 }
 
+# Only these stations are surfaced to the frontend
+_ALLOWED_STATIONS = {"Thessaloniki", "Panorama", "Kordelio", "Sindos"}
+
 # EPA AQI breakpoints (µg/m³, converted from ppb at 25°C) — must match ml/preprocessing.py
 _NO2_BP = [
     (0.0,    100.0,   0,  50),
@@ -171,6 +174,8 @@ async def _fetch() -> dict:
     station_readings: list[StationReading] = []
     for loc_id, readings in poll_by_loc.items():
         meta = loc_meta[loc_id]
+        if meta["name"] not in _ALLOWED_STATIONS:
+            continue
         no2_aqi = _piecewise_aqi(readings.get("no2", 0.0), _NO2_BP)
         o3_aqi  = _piecewise_aqi(readings.get("o3",  0.0), _O3_BP)
         so2_aqi = _piecewise_aqi(readings.get("so2", 0.0), _SO2_BP)
