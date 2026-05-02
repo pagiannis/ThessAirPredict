@@ -42,7 +42,7 @@ const ForecastChart = ({ data }: Props) => {
 
   return (
     <motion.div
-      className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl p-6"
+      className="bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl p-4 sm:p-6"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
@@ -58,7 +58,7 @@ const ForecastChart = ({ data }: Props) => {
           </p>
         </div>
       </div>
-      <div className="h-64">
+      <div className="h-48 sm:h-64">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData}>
             <defs>
