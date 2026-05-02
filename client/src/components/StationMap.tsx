@@ -50,7 +50,7 @@ const StationMap = ({ stations }: Props) => {
         Live AQI readings across Thessaloniki
       </p>
 
-      <div className="rounded-lg overflow-hidden h-72 sm:h-64">
+      <div className="rounded-lg overflow-hidden h-64 sm:h-80">
         <MapContainer
           {...mapProps}
           style={{ height: "100%", width: "100%" }}
