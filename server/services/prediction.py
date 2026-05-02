@@ -1,17 +1,17 @@
 """
-ML inference: loads the trained RandomForest from server/model/model.pkl
+ML inference: loads the trained LightGBM model from server/model/model.pkl
 and generates a 48-hour AQI forecast given current OpenAQ readings.
 
 Feature order must match ml/preprocessing.py FEATURE_COLS exactly:
   [hour_sin, hour_cos, day_of_week, month_sin, month_cos, hours_ahead,
    no2_conc, o3_conc, co_conc, so2_conc,
-   aqi_lag_1h, aqi_lag_3h, aqi_lag_6h,
+   aqi_lag_1h, aqi_lag_3h, aqi_lag_6h, aqi_lag_12h, aqi_lag_24h,
    temperature, humidity, precipitation, wind_speed]
 
 Weather comes from Open-Meteo's hourly forecast so each horizon h uses the
 predicted weather at t+h, matching how training weather was looked up at t+h.
 
-Lag approximation: aqi_lag_1h/3h/6h are all set to the current live AQI.
+Lag approximation: all lag columns are set to the current live AQI.
 Training uses real historical lags; this mismatch is a known limitation.
 """
 
@@ -145,6 +145,8 @@ async def generate_forecast(
             "aqi_lag_1h":    current_aqi,
             "aqi_lag_3h":    current_aqi,
             "aqi_lag_6h":    current_aqi,
+            "aqi_lag_12h":   current_aqi,
+            "aqi_lag_24h":   current_aqi,
             "temperature":   weather["temperature"],
             "humidity":      weather["humidity"],
             "precipitation": weather["precipitation"],

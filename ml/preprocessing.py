@@ -58,7 +58,7 @@ HORIZONS = list(range(3, 49, 3))  # [3, 6, 9, ..., 48]
 # Pollutant + lag columns come from the base timestamp t
 _POLLUTANT_LAG_COLS = [
     "no2_conc", "o3_conc", "co_conc", "so2_conc",
-    "aqi_lag_1h", "aqi_lag_3h", "aqi_lag_6h",
+    "aqi_lag_1h", "aqi_lag_3h", "aqi_lag_6h", "aqi_lag_12h", "aqi_lag_24h",
 ]
 # Weather columns are looked up at the FUTURE timestamp t+h in build_features_multistep
 _WEATHER_COLS = ["temperature", "humidity", "precipitation", "wind_speed"]
@@ -130,7 +130,7 @@ def load_and_merge() -> pd.DataFrame:
     # Rows where the lagged timestamp doesn't exist in the data become NaN
     # and are dropped downstream by build_features_multistep's dropna().
     aqi_lookup = df.set_index("time")["aqi"]
-    for h, col in [(1, "aqi_lag_1h"), (3, "aqi_lag_3h"), (6, "aqi_lag_6h")]:
+    for h, col in [(1, "aqi_lag_1h"), (3, "aqi_lag_3h"), (6, "aqi_lag_6h"), (12, "aqi_lag_12h"), (24, "aqi_lag_24h")]:
         df[col] = aqi_lookup.reindex(df["time"] - pd.Timedelta(hours=h)).values
 
     return df

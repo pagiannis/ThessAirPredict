@@ -8,14 +8,14 @@ No test runner is configured.
 AI-based air quality forecasting for Thessaloniki.
 - **Frontend:** React 19, TypeScript, Vite, Tailwind 4, shadcn/ui.
 - **Backend:** FastAPI (Python 3.11+), OpenAQ v3 API.
-- **ML:** scikit-learn RandomForest trained on EEA historical data, served by the backend.
+- **ML:** LightGBM model trained on EEA historical data, served by the backend.
 
 
 ### ML retraining (`ml/` with its own venv)
 ```bash
 python preprocessing.py   # fetch + process EEA data → features CSV
-python train_model.py     # train RandomForest → model.pkl
-# Then manually copy: cp ml/model.pkl server/model/model.pkl
+python train_model.py     # train LightGBM → model.pkl
+# Then manually copy: cp model.pkl ../server/model/model.pkl
 ```
 
 ## Environment Variables
@@ -32,14 +32,14 @@ Browser → React Query hook → lib/api.ts → axios (baseURL=VITE_API_URL)
 
 Two API endpoints, both under `/api`:
 - `GET /api/air-quality` → `services/openaq.py::fetch_air_quality()` — live readings, 5-min in-memory cache
-- `GET /api/forecast` → `services/prediction.py::generate_forecast()` — calls `fetch_air_quality()` then runs the RandomForest
+- `GET /api/forecast` → `services/prediction.py::generate_forecast()` — calls `fetch_air_quality()` then runs the LightGBM model
 
 ### ML Inference Pipeline
 `generate_forecast()` in `services/prediction.py`:
 1. Extracts NO₂, O₃, CO, SO₂ concentrations from the cached air quality data.
 2. Fetches current weather from open-meteo (temperature, humidity, precipitation, wind speed); falls back to hardcoded defaults if unavailable.
-3. Runs the RandomForest for each forecast horizon (0 h to 48 h, step 3 h). The "Now" point uses the live AQI directly.
-4. Feature column order is fixed: `[hour_sin, hour_cos, day_of_week, month_sin, month_cos, hours_ahead, no2_conc, o3_conc, co_conc, so2_conc, temperature, humidity, precipitation, wind_speed, aqi_lag_1h, aqi_lag_3h, aqi_lag_6h]` — must match `ml/preprocessing.py::FEATURE_COLS` exactly or predictions will be silently wrong. `hour` and `month` are encoded as sin/cos pairs so the model sees cyclical distance correctly (hour 23 ≈ hour 0). At inference time, all three lag columns are set to the current live AQI (no historical readings available without additional API calls).
+3. Runs the LightGBM model for each forecast horizon (0 h to 48 h, step 3 h). The "Now" point uses the live AQI directly.
+4. Feature column order is fixed: `[hour_sin, hour_cos, day_of_week, month_sin, month_cos, hours_ahead, no2_conc, o3_conc, co_conc, so2_conc, aqi_lag_1h, aqi_lag_3h, aqi_lag_6h, aqi_lag_12h, aqi_lag_24h, temperature, humidity, precipitation, wind_speed]` — must match `ml/preprocessing.py::FEATURE_COLS` exactly or predictions will be silently wrong. `hour` and `month` are encoded as sin/cos pairs so the model sees cyclical distance correctly (hour 23 ≈ hour 0). At inference time, all five lag columns are set to the current live AQI (no historical readings available without additional API calls).
 
 ### Critical Sync Points
 - **AQI breakpoints** — EPA piecewise breakpoints for NO₂, O₃, SO₂ are duplicated in `server/services/openaq.py` and `ml/preprocessing.py`. Both files must stay identical.

@@ -10,7 +10,7 @@ After training, copy model.pkl to server/model/model.pkl.
 import pickle
 from pathlib import Path
 
-from sklearn.ensemble import RandomForestRegressor
+import lightgbm as lgb
 from sklearn.metrics import mean_absolute_error, r2_score
 
 from preprocessing import load_and_merge, build_features_multistep
@@ -20,10 +20,11 @@ MODEL_OUT = Path("model.pkl")
 
 def print_feature_importances(model, feature_names):
     pairs = sorted(zip(feature_names, model.feature_importances_), key=lambda x: x[1], reverse=True)
+    total = sum(imp for _, imp in pairs)
     print("\nFeature importances:")
     for name, imp in pairs:
-        bar = "█" * int(imp * 50)
-        print(f"  {name:<22} {bar} {imp:.3f}")
+        bar = "█" * int((imp / total) * 50)
+        print(f"  {name:<22} {bar} {imp / total:.3f}")
 
 
 def train():
@@ -41,14 +42,24 @@ def train():
     y_train, y_test = y[train_mask], y[test_mask]
     print(f"  Train: {len(X_train):,} rows  |  Test: {len(X_test):,} rows")
 
-    print("\nTraining RandomForest...")
-    model = RandomForestRegressor(
-        n_estimators=300,
-        min_samples_leaf=3,
+    print("\nTraining LightGBM...")
+    model = lgb.LGBMRegressor(
+        n_estimators=2000,
+        learning_rate=0.05,
+        num_leaves=63,
+        min_child_samples=20,
+        subsample=0.8,
+        colsample_bytree=0.8,
         random_state=42,
         n_jobs=-1,
+        verbose=-1,
     )
-    model.fit(X_train, y_train)
+    model.fit(
+        X_train, y_train,
+        eval_set=[(X_test, y_test)],
+        callbacks=[lgb.early_stopping(50, verbose=False), lgb.log_evaluation(200)],
+    )
+    print(f"  Best iteration: {model.best_iteration_}")
 
     y_pred = model.predict(X_test)
     mae = mean_absolute_error(y_test, y_pred)
