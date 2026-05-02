@@ -39,7 +39,7 @@ Two API endpoints, both under `/api`:
 1. Extracts NO₂, O₃, CO, SO₂ concentrations from the cached air quality data.
 2. Fetches current weather from open-meteo (temperature, humidity, precipitation, wind speed); falls back to hardcoded defaults if unavailable.
 3. Runs the RandomForest for each forecast horizon (0 h to 48 h, step 3 h). The "Now" point uses the live AQI directly.
-4. Feature column order is fixed: `[hour, day_of_week, month, hours_ahead, no2_conc, o3_conc, co_conc, so2_conc, temperature, humidity, precipitation, wind_speed]` — must match `ml/preprocessing.py::FEATURE_COLS` exactly or predictions will be silently wrong.
+4. Feature column order is fixed: `[hour_sin, hour_cos, day_of_week, month_sin, month_cos, hours_ahead, no2_conc, o3_conc, co_conc, so2_conc, temperature, humidity, precipitation, wind_speed, aqi_lag_1h, aqi_lag_3h, aqi_lag_6h]` — must match `ml/preprocessing.py::FEATURE_COLS` exactly or predictions will be silently wrong. `hour` and `month` are encoded as sin/cos pairs so the model sees cyclical distance correctly (hour 23 ≈ hour 0). At inference time, all three lag columns are set to the current live AQI (no historical readings available without additional API calls).
 
 ### Critical Sync Points
 - **AQI breakpoints** — EPA piecewise breakpoints for NO₂, O₃, SO₂ are duplicated in `server/services/openaq.py` and `ml/preprocessing.py`. Both files must stay identical.

@@ -8,10 +8,12 @@ Output:  X, y, base_times  via build_features_multistep()
 
 Training design (multi-step forecasting):
   For each (timestamp t, horizon h in [3, 6, ..., 48]):
-    Features : current pollutant/weather readings at t  +  time-of-day at t+h  +  h
+    Features : pollutant/weather readings at t  +  time-of-day at t+h  +  h
     Target   : AQI at t+h
 
-  This matches inference: given current OpenAQ readings, predict AQI h hours ahead.
+  Weather at t (not t+h) is used as a feature. Using actual future weather in training
+  caused the model to over-rely on temperature as a same-time AQI correlate rather than
+  a genuine predictor, hurting generalisation (MAE 6.39 vs 5.75).
   Using FUTURE AQI as the target (not current) prevents data leakage where the model
   would otherwise just learn to invert the AQI formula.
 
@@ -22,6 +24,7 @@ breakpoints (converted from ppb to µg/m³). PM2.5 is not available in this data
 import glob
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 DATA_DIR = Path(__file__).parent / "data"
@@ -52,12 +55,17 @@ _SO2_BP = [  # 1 ppb SO2 ≈ 2.62 µg/m³
 
 HORIZONS = list(range(3, 49, 3))  # [3, 6, 9, ..., 48]
 
-_POLLUTANT_WEATHER_COLS = [
+# Pollutant + lag columns come from the base timestamp t
+_POLLUTANT_LAG_COLS = [
     "no2_conc", "o3_conc", "co_conc", "so2_conc",
-    "temperature", "humidity", "precipitation", "wind_speed",
+    "aqi_lag_1h", "aqi_lag_3h", "aqi_lag_6h",
 ]
+# Weather columns are looked up at the FUTURE timestamp t+h in build_features_multistep
+_WEATHER_COLS = ["temperature", "humidity", "precipitation", "wind_speed"]
 
-FEATURE_COLS = ["hour", "day_of_week", "month", "hours_ahead"] + _POLLUTANT_WEATHER_COLS
+_POLLUTANT_WEATHER_COLS = _POLLUTANT_LAG_COLS + _WEATHER_COLS
+
+FEATURE_COLS = ["hour_sin", "hour_cos", "day_of_week", "month_sin", "month_cos", "hours_ahead"] + _POLLUTANT_WEATHER_COLS
 
 
 def _piecewise_aqi(conc: float, breakpoints: list) -> int:
@@ -96,9 +104,13 @@ def compute_aqi(df: pd.DataFrame) -> pd.Series:
 
 def add_time_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df["hour"]        = df["time"].dt.hour
+    hour  = df["time"].dt.hour
+    month = df["time"].dt.month
     df["day_of_week"] = df["time"].dt.dayofweek
-    df["month"]       = df["time"].dt.month
+    df["hour_sin"]    = np.sin(2 * np.pi * hour / 24)
+    df["hour_cos"]    = np.cos(2 * np.pi * hour / 24)
+    df["month_sin"]   = np.sin(2 * np.pi * (month - 1) / 12)
+    df["month_cos"]   = np.cos(2 * np.pi * (month - 1) / 12)
     return df
 
 
@@ -113,6 +125,14 @@ def load_and_merge() -> pd.DataFrame:
     df = pollutants.merge(weather, on="time", how="inner")
     df = add_time_features(df)
     df["aqi"] = compute_aqi(df)
+
+    # Lag features: look up actual AQI at t-1h, t-3h, t-6h by time index.
+    # Rows where the lagged timestamp doesn't exist in the data become NaN
+    # and are dropped downstream by build_features_multistep's dropna().
+    aqi_lookup = df.set_index("time")["aqi"]
+    for h, col in [(1, "aqi_lag_1h"), (3, "aqi_lag_3h"), (6, "aqi_lag_6h")]:
+        df[col] = aqi_lookup.reindex(df["time"] - pd.Timedelta(hours=h)).values
+
     return df
 
 
@@ -127,19 +147,23 @@ def build_features_multistep(df: pd.DataFrame):
     all_X, all_y, all_t = [], [], []
 
     for h in HORIZONS:
+        # All base features (pollutants, weather, lags) at current time t
         base = indexed[_POLLUTANT_WEATHER_COLS].copy()
 
         # Shift future AQI index back by h hours so it aligns with the base timestamp
+        delta = pd.Timedelta(hours=h)
         future_aqi = indexed["aqi"].copy()
-        future_aqi.index = future_aqi.index - pd.Timedelta(hours=h)
+        future_aqi.index = future_aqi.index - delta
 
         chunk = base.join(future_aqi.rename("future_aqi"), how="inner").dropna()
 
-        future_time = chunk.index + pd.Timedelta(hours=h)
+        future_time = chunk.index + delta
         chunk = chunk.copy()
-        chunk["hour"]        = future_time.hour
+        chunk["hour_sin"]    = np.sin(2 * np.pi * future_time.hour / 24)
+        chunk["hour_cos"]    = np.cos(2 * np.pi * future_time.hour / 24)
         chunk["day_of_week"] = future_time.dayofweek
-        chunk["month"]       = future_time.month
+        chunk["month_sin"]   = np.sin(2 * np.pi * (future_time.month - 1) / 12)
+        chunk["month_cos"]   = np.cos(2 * np.pi * (future_time.month - 1) / 12)
         chunk["hours_ahead"] = h
 
         all_X.append(chunk[FEATURE_COLS])

@@ -3,14 +3,22 @@ ML inference: loads the trained RandomForest from server/model/model.pkl
 and generates a 48-hour AQI forecast given current OpenAQ readings.
 
 Feature order must match ml/preprocessing.py FEATURE_COLS exactly:
-  [hour, day_of_week, month, hours_ahead,
+  [hour_sin, hour_cos, day_of_week, month_sin, month_cos, hours_ahead,
    no2_conc, o3_conc, co_conc, so2_conc,
+   aqi_lag_1h, aqi_lag_3h, aqi_lag_6h,
    temperature, humidity, precipitation, wind_speed]
+
+Weather comes from Open-Meteo's hourly forecast so each horizon h uses the
+predicted weather at t+h, matching how training weather was looked up at t+h.
+
+Lag approximation: aqi_lag_1h/3h/6h are all set to the current live AQI.
+Training uses real historical lags; this mismatch is a known limitation.
 """
 
 import logging
+import math
 import pickle
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -47,24 +55,45 @@ def _load_model():
     return _model
 
 
-async def _fetch_current_weather() -> dict:
+async def _fetch_weather_forecast(hours: int = 48) -> list[dict]:
+    """Returns a list of weather dicts for hours 0..hours (hourly, UTC-aligned).
+
+    Index h in the returned list corresponds to current_time + h hours, matching
+    the horizon used when building each forecast point in generate_forecast().
+    """
     async with httpx.AsyncClient(timeout=5.0) as client:
         resp = await client.get(
             "https://api.open-meteo.com/v1/forecast",
             params={
-                "latitude": THESS_LAT,
-                "longitude": THESS_LON,
-                "current": "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m",
+                "latitude":      THESS_LAT,
+                "longitude":     THESS_LON,
+                "hourly":        "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m",
+                "timezone":      "UTC",
+                "forecast_days": 3,
             },
         )
         resp.raise_for_status()
-        c = resp.json()["current"]
-    return {
-        "temperature":   c["temperature_2m"],
-        "humidity":      c["relative_humidity_2m"],
-        "precipitation": c["precipitation"],
-        "wind_speed":    c["wind_speed_10m"],
-    }
+        hourly = resp.json()["hourly"]
+
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:00")
+    try:
+        start_idx = hourly["time"].index(now_str)
+    except ValueError:
+        start_idx = 0
+
+    result: list[dict] = []
+    for h in range(hours + 1):
+        idx = start_idx + h
+        if idx < len(hourly["temperature_2m"]):
+            result.append({
+                "temperature":   hourly["temperature_2m"][idx],
+                "humidity":      hourly["relative_humidity_2m"][idx],
+                "precipitation": hourly["precipitation"][idx],
+                "wind_speed":    hourly["wind_speed_10m"][idx],
+            })
+        else:
+            result.append(_WEATHER_DEFAULTS)
+    return result
 
 
 def _extract_pollutants(pollutants: list) -> dict:
@@ -81,14 +110,15 @@ async def generate_forecast(
     hours: int = 48,
     step_h: int = 3,
 ) -> list[ForecastPoint]:
-    model = _load_model()
-    poll  = _extract_pollutants(air_data["pollutants"])
+    model       = _load_model()
+    poll        = _extract_pollutants(air_data["pollutants"])
+    current_aqi = air_data["aqi"]
 
     try:
-        weather = await _fetch_current_weather()
+        weather_forecast = await _fetch_weather_forecast(hours)
     except Exception as exc:
-        logger.warning("Weather API unavailable (%s); using defaults %s", exc, _WEATHER_DEFAULTS)
-        weather = _WEATHER_DEFAULTS
+        logger.warning("Weather forecast unavailable (%s); using defaults", exc)
+        weather_forecast = [_WEATHER_DEFAULTS] * (hours + 1)
 
     now    = datetime.now()
     points = []
@@ -99,16 +129,22 @@ async def generate_forecast(
             points.append(ForecastPoint(time="Now", aqi=air_data["aqi"]))
             continue
 
-        future = now + timedelta(hours=h)
+        future  = now + timedelta(hours=h)
+        weather = weather_forecast[h] if h < len(weather_forecast) else _WEATHER_DEFAULTS
         features = pd.DataFrame([{
-            "hour":          future.hour,
+            "hour_sin":      math.sin(2 * math.pi * future.hour / 24),
+            "hour_cos":      math.cos(2 * math.pi * future.hour / 24),
             "day_of_week":   future.weekday(),
-            "month":         future.month,
+            "month_sin":     math.sin(2 * math.pi * (future.month - 1) / 12),
+            "month_cos":     math.cos(2 * math.pi * (future.month - 1) / 12),
             "hours_ahead":   h,
             "no2_conc":      poll["no2_conc"],
             "o3_conc":       poll["o3_conc"],
             "co_conc":       poll["co_conc"],
             "so2_conc":      poll["so2_conc"],
+            "aqi_lag_1h":    current_aqi,
+            "aqi_lag_3h":    current_aqi,
+            "aqi_lag_6h":    current_aqi,
             "temperature":   weather["temperature"],
             "humidity":      weather["humidity"],
             "precipitation": weather["precipitation"],
