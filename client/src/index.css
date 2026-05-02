@@ -3,6 +3,57 @@
 
 
 :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 210 20% 98%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 222 47% 11%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 20% 94%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 36 90% 45%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
+    --ring: 222 47% 11%;
+
+    --radius: 0.75rem;
+
+    --aqi-good: 142 70% 38%;
+    --aqi-moderate: 38 90% 42%;
+    --aqi-unhealthy-sensitive: 28 90% 45%;
+    --aqi-unhealthy: 0 72% 50%;
+    --aqi-very-unhealthy: 280 60% 42%;
+    --aqi-hazardous: 340 80% 35%;
+
+    --sidebar-background: 210 20% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 222 47% 11%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 20% 94%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 88%;
+    --sidebar-ring: 222 47% 11%;
+
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+}
+
+.dark {
     --background: 220 20% 7%;
     --foreground: 200 20% 92%;
 
@@ -31,8 +82,6 @@
     --input: 220 14% 18%;
     --ring: 0 0% 100%;
 
-    --radius: 0.75rem;
-
     --aqi-good: 142 70% 45%;
     --aqi-moderate: 48 90% 50%;
     --aqi-unhealthy-sensitive: 28 90% 52%;
@@ -48,9 +97,6 @@
     --sidebar-accent-foreground: 200 20% 80%;
     --sidebar-border: 220 14% 18%;
     --sidebar-ring: 0 0% 100%;
-
-    --font-display: 'Space Grotesk', sans-serif;
-    --font-body: 'Inter', sans-serif;
 }
 
 @theme {

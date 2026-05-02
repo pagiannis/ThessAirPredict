@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, Moon, Sun, X } from "lucide-react";
+import { GoSun } from "react-icons/go";
 import { Link, NavLink } from "react-router-dom";
 import logo from "@/assets/thita_logo.png";
+import { useTheme } from "@/contexts/ThemeContext";
+import { cn } from "@/lib/utils";
 
 const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const navItems = [
     { label: "Dashboard", path: "/" },
@@ -13,8 +17,8 @@ const Header = () => {
 
   return (
     <header className="mx-2 sm:mx-10 lg:mx-40 fixed top-0 left-0 right-0 z-50 bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl border-t-0 rounded-t-none border-x-0">
-      <div className="container flex items-center justify-between h-16">
-        <div className="flex items-center gap-14">
+      <div className="container flex items-center h-16">
+        <div className="flex-1 flex items-center gap-14">
           <Link
             to="/"
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -48,7 +52,34 @@ const Header = () => {
           </nav>
         </div>
 
-        <div className="flex items-center gap-2">
+        <button
+          onClick={toggleTheme}
+          aria-label="Toggle theme"
+          className="hidden md:flex items-center gap-2.5 rounded-full bg-muted/50 p-1.5 transition-colors hover:bg-muted"
+        >
+          <span
+            className={cn(
+              "rounded-full p-1.5 transition-colors text-muted-foreground",
+              theme === "light"
+                ? "bg-foreground/10 text-foreground"
+                : "border border-foreground/10",
+            )}
+          >
+            <GoSun />
+          </span>
+          <span
+            className={cn(
+              "rounded-full p-1.5 transition-colors text-muted-foreground",
+              theme === "dark"
+                ? "bg-foreground/10 text-foreground"
+                : "border border-foreground/10",
+            )}
+          >
+            <Moon className="h-4 w-4" />
+          </span>
+        </button>
+
+        <div className="flex-1 flex items-center justify-end gap-2">
           <span className="hidden sm:inline font-medium text-base text-muted-foreground">
             Thessaloniki, GR
           </span>
@@ -83,6 +114,17 @@ const Header = () => {
               {label}
             </NavLink>
           ))}
+          <button
+            onClick={toggleTheme}
+            className="flex items-center gap-2 py-2 text-base font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+            {theme === "dark" ? "Light mode" : "Dark mode"}
+          </button>
         </nav>
       )}
     </header>
