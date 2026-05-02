@@ -11,8 +11,9 @@ Feature order must match ml/preprocessing.py FEATURE_COLS exactly:
 Weather comes from Open-Meteo's hourly forecast so each horizon h uses the
 predicted weather at t+h, matching how training weather was looked up at t+h.
 
-Lag approximation: all lag columns are set to the current live AQI.
-Training uses real historical lags; this mismatch is a known limitation.
+Lag columns use _aqi_history: a rolling deque populated by openaq.py on every
+cache refresh (~5 min). Entries within 30 min of the target lag time are used;
+otherwise falls back to current AQI (e.g. on cold server start).
 """
 
 import logging
@@ -28,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 from config import THESS_LAT, THESS_LON
 from models.schemas import ForecastPoint
+from services.openaq import _aqi_history
 
 _MODEL_PATH = Path(__file__).parent.parent / "model" / "model.pkl"
 _model = None
@@ -105,6 +107,22 @@ def _extract_pollutants(pollutants: list) -> dict:
     return result
 
 
+def _get_lag_aqi(lag_hours: int, current_aqi: float) -> float:
+    """Return the historical AQI from `lag_hours` ago, or fall back to current_aqi.
+
+    Searches _aqi_history for the entry closest to (now - lag_hours). Accepts
+    entries within a 30-minute window so the lag degrades gracefully when history
+    is sparse (e.g. shortly after server start).
+    """
+    if not _aqi_history:
+        return current_aqi
+    target = datetime.now(timezone.utc) - timedelta(hours=lag_hours)
+    best = min(_aqi_history, key=lambda e: abs((e[0] - target).total_seconds()))
+    if abs((best[0] - target).total_seconds()) < 1800:
+        return best[1]
+    return current_aqi
+
+
 async def generate_forecast(
     air_data: dict,
     hours: int = 48,
@@ -142,11 +160,11 @@ async def generate_forecast(
             "o3_conc":       poll["o3_conc"],
             "co_conc":       poll["co_conc"],
             "so2_conc":      poll["so2_conc"],
-            "aqi_lag_1h":    current_aqi,
-            "aqi_lag_3h":    current_aqi,
-            "aqi_lag_6h":    current_aqi,
-            "aqi_lag_12h":   current_aqi,
-            "aqi_lag_24h":   current_aqi,
+            "aqi_lag_1h":    _get_lag_aqi(1,  current_aqi),
+            "aqi_lag_3h":    _get_lag_aqi(3,  current_aqi),
+            "aqi_lag_6h":    _get_lag_aqi(6,  current_aqi),
+            "aqi_lag_12h":   _get_lag_aqi(12, current_aqi),
+            "aqi_lag_24h":   _get_lag_aqi(24, current_aqi),
             "temperature":   weather["temperature"],
             "humidity":      weather["humidity"],
             "precipitation": weather["precipitation"],

@@ -1,5 +1,6 @@
 import asyncio
 import time
+from collections import deque
 from datetime import datetime, timezone
 from typing import Any
 
@@ -13,6 +14,9 @@ SEARCH_RADIUS_M = 25_000 # how far to look for stations around Thessaloniki (in 
 CACHE_TTL = 300  # seconds
 
 _cache: dict[str, tuple[Any, float]] = {}
+# Rolling window of (utc_datetime, aqi) pairs — one entry per cache refresh (~5 min).
+# maxlen=300 covers ~25 hours, enough for all lag offsets (1h, 3h, 6h, 12h, 24h).
+_aqi_history: deque[tuple[datetime, float]] = deque(maxlen=300)
 
 # Human-readable overrides for EEA station codes returned by OpenAQ
 _STATION_NAMES: dict[str, str] = {
@@ -237,4 +241,5 @@ async def fetch_air_quality() -> dict:
                     p.trend = "down"
 
     _cache[key] = (result, time.monotonic())
+    _aqi_history.append((datetime.now(timezone.utc), float(result["aqi"])))
     return result
