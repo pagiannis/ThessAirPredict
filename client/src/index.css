@@ -3,7 +3,7 @@
 
 
 :root {
- --background: 220 20% 7%;
+    --background: 220 20% 7%;
     --foreground: 200 20% 92%;
 
     --card: 220 18% 11%;
@@ -12,7 +12,7 @@
     --popover: 220 18% 11%;
     --popover-foreground: 200 20% 92%;
 
-    --primary: 174 72% 46%;
+    --primary: 0 0% 100%;
     --primary-foreground: 220 20% 7%;
 
     --secondary: 220 16% 16%;
@@ -29,7 +29,7 @@
 
     --border: 220 14% 18%;
     --input: 220 14% 18%;
-    --ring: 174 72% 46%;
+    --ring: 0 0% 100%;
 
     --radius: 0.75rem;
 
@@ -42,12 +42,12 @@
 
     --sidebar-background: 220 18% 9%;
     --sidebar-foreground: 200 20% 80%;
-    --sidebar-primary: 174 72% 46%;
+    --sidebar-primary: 0 0% 100%;
     --sidebar-primary-foreground: 220 20% 7%;
     --sidebar-accent: 220 14% 14%;
     --sidebar-accent-foreground: 200 20% 80%;
     --sidebar-border: 220 14% 18%;
-    --sidebar-ring: 174 72% 46%;
+    --sidebar-ring: 0 0% 100%;
 
     --font-display: 'Space Grotesk', sans-serif;
     --font-body: 'Inter', sans-serif;

@@ -65,12 +65,12 @@ const ForecastChart = ({ data }: Props) => {
               <linearGradient id="aqiGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop
                   offset="0%"
-                  stopColor="hsl(174, 72%, 46%)"
+                  stopColor="hsl(var(--primary))"
                   stopOpacity={0.3}
                 />
                 <stop
                   offset="100%"
-                  stopColor="hsl(174, 72%, 46%)"
+                  stopColor="hsl(var(--primary))"
                   stopOpacity={0}
                 />
               </linearGradient>
@@ -79,28 +79,28 @@ const ForecastChart = ({ data }: Props) => {
               dataKey="label"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "hsl(215, 12%, 50%)", fontSize: 12 }}
+              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
               interval={3}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "hsl(215, 12%, 50%)", fontSize: 12 }}
+              tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
               domain={[domainMin, domainMax]}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: "hsl(220, 18%, 11%)",
-                border: "1px solid hsl(220, 14%, 18%)",
+                backgroundColor: "hsl(var(--card))",
+                border: "1px solid hsl(var(--border))",
                 borderRadius: "8px",
-                color: "hsl(200, 20%, 92%)",
+                color: "hsl(var(--foreground))",
                 fontSize: 12,
               }}
             />
             <Area
               type="monotone"
               dataKey="aqi"
-              stroke="hsl(174, 72%, 46%)"
+              stroke="hsl(var(--primary))"
               strokeWidth={2}
               fill="url(#aqiGradient)"
             />
