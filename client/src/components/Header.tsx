@@ -17,7 +17,7 @@ const Header = () => {
   ];
 
   return (
-    <header className="mx-2 sm:mx-10 lg:mx-40 fixed top-0 left-0 right-0 z-50 bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl border-t-0 rounded-t-none border-x-0">
+    <header className="fixed top-0 inset-x-0 max-w-[1400px] mx-auto z-50 bg-card/60 backdrop-blur-xl border border-border/50 rounded-xl border-t-0 rounded-t-none border-x-0">
       <div className="container flex items-center h-16">
         <div className="flex-1 flex items-center">
           <Link to="/" className="flex items-center gap-2">
