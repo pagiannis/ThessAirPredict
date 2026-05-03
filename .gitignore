@@ -2,6 +2,5 @@
 
 # ML artifacts
 ml/data/*.xlsx
-ml/data/*.csv
 ml/model.pkl
 server/model/*.pkl
