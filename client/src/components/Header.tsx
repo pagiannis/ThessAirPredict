@@ -52,7 +52,7 @@ const Header = () => {
           <button
             onClick={toggleTheme}
             aria-label="Toggle theme"
-            className="hidden md:flex items-center gap-2.5 rounded-full bg-muted/50 p-1.5 transition-colors hover:bg-muted focus:outline-none"
+            className="hidden md:flex items-center gap-2.5 rounded-full bg-muted p-1.5 transition-colors hover:bg-muted focus:outline-none"
           >
             <span
               className={cn(
