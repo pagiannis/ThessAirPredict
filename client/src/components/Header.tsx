@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Menu, Moon, Sun, X } from "lucide-react";
 import { GoSun } from "react-icons/go";
 import { Link, NavLink } from "react-router-dom";
-import logo from "@/assets/thita_logo.png";
+import logoDark from "@/assets/dark_theme_thita_logo.png";
+import logoLight from "@/assets/light_theme_thita_logo.png";
 import { useTheme } from "@/contexts/ThemeContext";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +22,7 @@ const Header = () => {
         <div className="flex-1 flex items-center">
           <Link to="/" className="flex items-center gap-2">
             <img
-              src={logo}
+              src={theme === "dark" ? logoDark : logoLight}
               alt="ThessAIRPredict logo"
               className="h-12 w-12 object-contain"
             />
