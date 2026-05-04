@@ -4,3 +4,5 @@
 ml/data/*.xlsx
 ml/model.pkl
 server/model/*.pkl
+
+*.txt
