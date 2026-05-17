@@ -5,5 +5,5 @@ export const useAirQuality = () =>
   useQuery({
     queryKey: ["air-quality"],
     queryFn: fetchAirQuality,
-    refetchInterval: 60_000,
+    refetchInterval: 10 * 60_000,
   });
