@@ -5,5 +5,5 @@ export const useForecast = () =>
   useQuery({
     queryKey: ["forecast"],
     queryFn: fetchForecast,
-    refetchInterval: 300_000,
+    refetchInterval: 30 * 60_000,
   });
