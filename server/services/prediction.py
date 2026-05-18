@@ -8,8 +8,8 @@ Feature order must match ml/preprocessing.py FEATURE_COLS exactly:
    aqi_lag_1h, aqi_lag_3h, aqi_lag_6h, aqi_lag_12h, aqi_lag_24h,
    temperature, humidity, precipitation, wind_speed]
 
-Weather comes from Open-Meteo's hourly forecast so each horizon h uses the
-predicted weather at t+h, matching how training weather was looked up at t+h.
+Weather comes from Open-Meteo's current-hour reading (index 0) so it matches
+how training used weather at t, not t+h.
 
 Lag columns use _aqi_history: a rolling deque populated by openaq.py on every
 cache refresh (~5 min). Entries within 30 min of the target lag time are used;
@@ -148,7 +148,7 @@ async def generate_forecast(
             continue
 
         future  = now + timedelta(hours=h)
-        weather = weather_forecast[h] if h < len(weather_forecast) else _WEATHER_DEFAULTS
+        weather = weather_forecast[0] if weather_forecast else _WEATHER_DEFAULTS
         features = pd.DataFrame([{
             "hour_sin":      math.sin(2 * math.pi * future.hour / 24),
             "hour_cos":      math.cos(2 * math.pi * future.hour / 24),

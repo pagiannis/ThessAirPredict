@@ -60,7 +60,6 @@ _POLLUTANT_LAG_COLS = [
     "no2_conc", "o3_conc", "co_conc", "so2_conc",
     "aqi_lag_1h", "aqi_lag_3h", "aqi_lag_6h", "aqi_lag_12h", "aqi_lag_24h",
 ]
-# Weather columns are looked up at the FUTURE timestamp t+h in build_features_multistep
 _WEATHER_COLS = ["temperature", "humidity", "precipitation", "wind_speed"]
 
 _POLLUTANT_WEATHER_COLS = _POLLUTANT_LAG_COLS + _WEATHER_COLS
